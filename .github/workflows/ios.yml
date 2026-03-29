@@ -11,11 +11,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Install Rust (with target)
         uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
 
-      - name: Add iOS target
-        run: rustup target add aarch64-apple-ios
+      - name: Verify Rust targets
+        run: rustup target list --installed
 
       - name: Build
         run: cargo build --release --target aarch64-apple-ios
