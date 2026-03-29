@@ -13,12 +13,12 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
+
+      - name: Add iOS target
+        run: rustup target add aarch64-apple-ios
 
       - name: Build
-        run: |
-          cargo build --release --target aarch64-apple-ios
+        run: cargo build --release --target aarch64-apple-ios
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
