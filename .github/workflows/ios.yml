@@ -21,7 +21,7 @@ jobs:
           cargo build --release \
             --target aarch64-apple-ios \
             --no-default-features \
-            --features "git users"
+            --features "git"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
