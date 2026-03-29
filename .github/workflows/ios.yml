@@ -11,16 +11,23 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust (with target)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
+      - name: Install Rust + target
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          source $HOME/.cargo/env
+          rustup toolchain install stable
+          rustup default stable
+          rustup target add aarch64-apple-ios
 
-      - name: Verify Rust targets
-        run: rustup target list --installed
+      - name: Check installed targets
+        run: |
+          source $HOME/.cargo/env
+          rustup target list --installed
 
       - name: Build
-        run: cargo build --release --target aarch64-apple-ios
+        run: |
+          source $HOME/.cargo/env
+          cargo build --release --target aarch64-apple-ios
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
