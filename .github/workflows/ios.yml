@@ -19,14 +19,16 @@ jobs:
           rustup default stable
           rustup target add aarch64-apple-ios
 
-      - name: Check installed targets
+      - name: Verify toolchain
         run: |
           source $HOME/.cargo/env
-          rustup target list --installed
+          rustc -vV
+          rustup show
 
       - name: Build
         run: |
           source $HOME/.cargo/env
+          rustup override set stable
           cargo build --release --target aarch64-apple-ios
 
       - name: Upload artifact
