@@ -1,4 +1,4 @@
-name: Build iOS (rootless)
+name: iOS Build
 
 on:
   workflow_dispatch:
@@ -11,34 +11,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Rust + target
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios
+
+      - name: Build (iOS)
         run: |
-          curl https://sh.rustup.rs -sSf | sh -s -- -y
-          source $HOME/.cargo/env
-          rustup toolchain install stable
-          rustup default stable
-          rustup target add aarch64-apple-ios
-
-      - name: Verify toolchain
-        run: |
-          source $HOME/.cargo/env
-          rustc -vV
-          rustup show
-
-      - name: Build
-        shell: bash
-        run: |
-          set -e
-          source $HOME/.cargo/env
-
-          export PATH="$HOME/.cargo/bin:$PATH"
-
-          rustup default stable
-          rustup target add aarch64-apple-ios
-
-          rustc --print target-list | grep ios
-
-          cargo build --release --target aarch64-apple-ios
+          cargo build --release \
+            --target aarch64-apple-ios \
+            --no-default-features \
+            --features "git users"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
