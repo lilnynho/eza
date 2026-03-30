@@ -2,6 +2,8 @@ name: iOS Build
 
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
 
 jobs:
   build-ios:
@@ -16,11 +18,16 @@ jobs:
         with:
           targets: aarch64-apple-ios
 
-      - name: Clean build (evitar cache bugado)
+      - name: Clean build (avoid cache issues)
         run: cargo clean
 
-      - name: Build (iOS)
+      - name: Show Xcode SDK
+        run: xcode-select -p
+
+      - name: Build iOS
         run: |
+          export SDK=$(xcrun --sdk iphoneos --show-sdk-path)
+
           cargo build --release \
             --target aarch64-apple-ios \
             --no-default-features \
@@ -30,5 +37,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: eza-ios
+          name: ios-binary
           path: target/aarch64-apple-ios/release/eza
