@@ -1,19 +1,24 @@
 // SPDX-FileCopyrightText: 2024 Christina Sørensen
-// SPDX-License-Identifier: EUPL-1.2
-//
 // SPDX-FileCopyrightText: 2023-2024 Christina Sørensen, eza contributors
 // SPDX-FileCopyrightText: 2014 Benjamin Sago
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 lilnynho
+//
+// SPDX-License-Identifier: EUPL-1.2 OR MIT
+//
+// Modified by lilnynho
+// Based on: https://github.com/eza-community/eza
+// Modifications for iOS compatibility (no uzers)
+
 use std::cmp::max;
 use std::ops::Deref;
-#[cfg(unix)]
+#[cfg(feature = "users")]
 use std::sync::{Mutex, MutexGuard};
 
 use chrono::prelude::*;
 
 use log::debug;
 use std::sync::LazyLock;
-#[cfg(unix)]
+#[cfg(feature = "users")]
 use uzers::UsersCache;
 
 use crate::fs::feature::git::GitCache;
@@ -22,8 +27,10 @@ use crate::options::Vars;
 use crate::options::vars::EZA_WINDOWS_ATTRIBUTES;
 use crate::output::cell::TextCell;
 use crate::output::color_scale::ColorScaleInformation;
+#[cfg(all(unix, feature = "users"))]
+use crate::output::render::{GroupRender, UserRender};
 #[cfg(unix)]
-use crate::output::render::{GroupRender, OctalPermissionsRender, UserRender};
+use crate::output::render::OctalPermissionsRender;
 use crate::output::render::{PermissionsPlusRender, TimeRender};
 use crate::output::time::TimeFormat;
 use crate::theme::Theme;
@@ -100,12 +107,12 @@ impl Columns {
         }
 
         if self.user {
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "users"))]
             columns.push(Column::User);
         }
 
         if self.group {
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "users"))]
             columns.push(Column::Group);
         }
 
@@ -374,12 +381,12 @@ pub struct Environment {
     numeric: locale::Numeric,
 
     /// Mapping cache of user IDs to usernames.
-    #[cfg(unix)]
+    #[cfg(feature = "users")]
     users: Mutex<UsersCache>,
 }
 
 impl Environment {
-    #[cfg(unix)]
+    #[cfg(feature = "users")]
     pub fn lock_users(&self) -> MutexGuard<'_, UsersCache> {
         self.users.lock().unwrap()
     }
@@ -390,13 +397,13 @@ impl Environment {
         let numeric =
             locale::Numeric::load_user_locale().unwrap_or_else(|_| locale::Numeric::english());
 
-        #[cfg(unix)]
+        #[cfg(feature = "users")]
         let users = Mutex::new(UsersCache::new());
 
         Self {
             time_offset,
             numeric,
-            #[cfg(unix)]
+            #[cfg(feature = "users")]
             users,
         }
     }
@@ -539,12 +546,12 @@ impl<'a> Table<'a> {
                 file.blocksize()
                     .render(self.theme, self.size_format, &self.env.numeric)
             }
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "users"))]
             Column::User => {
                 file.user()
                     .render(self.theme, &*self.env.lock_users(), self.user_format)
             }
-            #[cfg(unix)]
+            #[cfg(all(unix, feature = "users"))]
             Column::Group => file.group().render(
                 self.theme,
                 &*self.env.lock_users(),
@@ -552,6 +559,13 @@ impl<'a> Table<'a> {
                 self.group_format,
                 file.user(),
             ),
+            
+            // 👇 ADICIONE AQUI (fora de qualquer cfg)
+            #[allow(unreachable_patterns)]
+            Column::User | Column::Group => {
+            TextCell::default()
+            },
+            
             #[cfg(unix)]
             Column::SecurityContext => file.security_context().render(self.theme),
             Column::FileFlags => file

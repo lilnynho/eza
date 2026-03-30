@@ -1,10 +1,16 @@
 // SPDX-FileCopyrightText: 2024 Christina Sørensen
-// SPDX-License-Identifier: EUPL-1.2
-//
 // SPDX-FileCopyrightText: 2023-2024 Christina Sørensen, eza contributors
 // SPDX-FileCopyrightText: 2014 Benjamin Sago
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 lilnynho
+//
+// SPDX-License-Identifier: EUPL-1.2 OR MIT
+//
+// Modified by lilnynho
+// Based on: https://github.com/eza-community/eza
+// Modifications for iOS compatibility (no uzers)
+
 use nu_ansi_term::Style;
+#[cfg(feature = "users")]
 use uzers::{Groups, Users};
 
 use crate::fs::fields as f;
@@ -13,7 +19,7 @@ use crate::output::cell::TextCell;
 use crate::output::table::{GroupFormat, UserFormat};
 
 pub trait Render {
-    fn render<C: Colours, U: Users + Groups>(
+    fn render<C: Colours, U>(
         self,
         colours: &C,
         users: &U,
@@ -22,7 +28,7 @@ pub trait Render {
         file_user: Option<User>,
     ) -> TextCell;
 }
-
+#[cfg(feature = "users")]
 impl Render for Option<f::Group> {
     fn render<C: Colours, U: Users + Groups>(
         self,
@@ -32,6 +38,7 @@ impl Render for Option<f::Group> {
         group_format: GroupFormat,
         file_user: Option<User>,
     ) -> TextCell {
+        #[cfg(feature = "users")]
         use uzers::os::unix::GroupExt;
 
         let mut style = colours.not_yours();
@@ -285,5 +292,27 @@ pub mod test {
                 http_file
             )
         );
+    }
+}
+
+//
+// ✅ FALLBACK (sem users - iOS)
+//
+#[cfg(not(feature = "users"))]
+impl Render for Option<f::Group> {
+    fn render<C: Colours, U>(
+        self,
+        colours: &C,
+        _users: &U,
+        _user_format: UserFormat,
+        _group_format: GroupFormat,
+        _file_user: Option<User>,
+    ) -> TextCell {
+        let gid = match self {
+            Some(g) => g.0,
+            None => return TextCell::blank(colours.no_group()),
+        };
+
+        TextCell::paint(colours.not_yours(), gid.to_string())
     }
 }

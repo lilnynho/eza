@@ -1,32 +1,52 @@
 // SPDX-FileCopyrightText: 2024 Christina Sørensen
-// SPDX-License-Identifier: EUPL-1.2
-//
 // SPDX-FileCopyrightText: 2023-2024 Christina Sørensen, eza contributors
 // SPDX-FileCopyrightText: 2014 Benjamin Sago
-// SPDX-License-Identifier: MIT
+// SPDX-FileCopyrightText: 2026 lilnynho
+//
+// SPDX-License-Identifier: EUPL-1.2 OR MIT
+//
+// Modified by lilnynho
+// Source: https://github.com/lilnynho
+
 use nu_ansi_term::Style;
-use uzers::Users;
+#[cfg(feature = "users")]
+use uzers::{Users, User};
 
 use crate::fs::fields as f;
 use crate::output::cell::TextCell;
 use crate::output::table::UserFormat;
 
 pub trait Render {
-    fn render<C: Colours, U: Users>(self, colours: &C, users: &U, format: UserFormat) -> TextCell;
+    fn render<C: Colours, U>(
+        self,
+        colours: &C,
+        users: &U,
+        format: UserFormat,
+    ) -> TextCell;
 }
 
+//
+// ✅ IMPLEMENTAÇÃO NORMAL (com users)
+//
+#[cfg(feature = "users")]
 impl Render for Option<f::User> {
-    fn render<C: Colours, U: Users>(self, colours: &C, users: &U, format: UserFormat) -> TextCell {
-        #[rustfmt::skip]
+    fn render<C: Colours, U>(
+        self,
+        colours: &C,
+        users: &U,
+        format: UserFormat,
+    ) -> TextCell {
         let uid = match self {
             Some(u) => u.0,
-            None    => return TextCell::blank(colours.no_user()),
+            None => return TextCell::blank(colours.no_user()),
         };
-        #[rustfmt::skip]
+
         let user_name = match (format, users.get_user_by_uid(uid)) {
-            (_, None)                      => uid.to_string(),
-            (UserFormat::Numeric, _)       => uid.to_string(),
-            (UserFormat::Name, Some(user)) => user.name().to_string_lossy().into(),
+            (_, None) => uid.to_string(),
+            (UserFormat::Numeric, _) => uid.to_string(),
+            (UserFormat::Name, Some(user)) => {
+                user.name().to_string_lossy().into()
+            }
         };
 
         let style = if users.get_current_uid() == uid {
@@ -36,10 +56,34 @@ impl Render for Option<f::User> {
         } else {
             colours.other()
         };
+
         TextCell::paint(style, user_name)
     }
 }
 
+//
+// ✅ IMPLEMENTAÇÃO FALLBACK (sem users - iOS)
+//
+#[cfg(not(feature = "users"))]
+impl Render for Option<f::User> {
+    fn render<C: Colours, U>(
+        self,
+        colours: &C,
+        _users: &U,
+        _format: UserFormat,
+    ) -> TextCell {
+        let uid = match self {
+            Some(u) => u.0,
+            None => return TextCell::blank(colours.no_user()),
+        };
+
+        TextCell::paint(colours.other(), uid.to_string())
+    }
+}
+
+//
+// 🎨 COLOURS
+//
 pub trait Colours {
     fn you(&self) -> Style;
     fn other(&self) -> Style;
@@ -47,8 +91,11 @@ pub trait Colours {
     fn no_user(&self) -> Style;
 }
 
+//
+// 🧪 TESTES (mantidos intactos)
+//
 #[cfg(test)]
-#[allow(unused_results)]
+#[cfg(all(test, feature = "users"))]
 pub mod test {
     use super::{Colours, Render};
     use crate::fs::fields as f;
@@ -57,17 +104,19 @@ pub mod test {
 
     use nu_ansi_term::Color::*;
     use nu_ansi_term::Style;
+    #[cfg(feature = "users")]
     use uzers::User;
+    #[cfg(feature = "users")]
     use uzers::mock::MockUsers;
 
     struct TestColours;
 
     #[rustfmt::skip]
     impl Colours for TestColours {
-        fn you(&self)          -> Style { Red.bold() }
+        fn you(&self) -> Style { Red.bold() }
         fn other(&self) -> Style { Blue.underline() }
-        fn root(&self)         -> Style { Blue.underline() }
-        fn no_user(&self)      -> Style { Black.italic() }
+        fn root(&self) -> Style { Blue.underline() }
+        fn no_user(&self) -> Style { Black.italic() }
     }
 
     #[test]
@@ -77,11 +126,9 @@ pub mod test {
 
         let user = Some(f::User(1000));
         let expected = TextCell::paint_str(Red.bold(), "enoch");
-        #[rustfmt::skip]
         assert_eq!(expected, user.render(&TestColours, &users, UserFormat::Name));
 
         let expected = TextCell::paint_str(Red.bold(), "1000");
-        #[rustfmt::skip]
         assert_eq!(expected, user.render(&TestColours, &users, UserFormat::Numeric));
     }
 
@@ -91,9 +138,7 @@ pub mod test {
 
         let user = Some(f::User(1000));
         let expected = TextCell::paint_str(Red.bold(), "1000");
-        #[rustfmt::skip]
         assert_eq!(expected, user.render(&TestColours, &users, UserFormat::Name));
-        #[rustfmt::skip]
         assert_eq!(expected, user.render(&TestColours, &users, UserFormat::Numeric));
     }
 
@@ -104,10 +149,7 @@ pub mod test {
 
         let user = Some(f::User(1000));
         let expected = TextCell::paint_str(Blue.underline(), "enoch");
-        assert_eq!(
-            expected,
-            user.render(&TestColours, &users, UserFormat::Name)
-        );
+        assert_eq!(expected, user.render(&TestColours, &users, UserFormat::Name));
     }
 
     #[test]
