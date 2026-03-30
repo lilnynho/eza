@@ -8,13 +8,16 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios
+
+      - name: Clean build (evitar cache bugado)
+        run: cargo clean
 
       - name: Build (iOS)
         run: |
