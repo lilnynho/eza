@@ -4,8 +4,6 @@
 name: "Automated Dependency Bump"
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 0 * * 4'
 jobs:
   update-and-create-pr:
     runs-on: ubuntu-latest
